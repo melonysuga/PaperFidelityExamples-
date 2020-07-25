@@ -1,0 +1,100 @@
+(*quantisation of classical state s*)
+s0 := {{1, 0, 0, 0, 0, 0}};
+s1 := {{0, 1, 0, 0, 0, 0}};
+s2 := {{0, 0, 1, 0, 0, 0}};
+s3 := {{0, 0, 0, 1, 0, 0}};
+s4 := {{0, 0, 0, 0, 1, 0}};
+s5 := {{0, 0, 0, 0, 0, 1}};
+
+(*some indentity& specific matrixs*)
+id := IdentityMatrix[2];
+id4 := IdentityMatrix[4];
+id16 := IdentityMatrix[16];
+id24 := IdentityMatrix[24];
+id576 := IdentityMatrix[576];
+X := {{0, 1}, {1, 0}};
+Z := {{1, 0}, {0, -1}};
+
+(*The transition super-operator matrix Q is given by the following \
+nonzero entries in Kraus representation:*)
+(*Q(Subscript[s, 0],Subscript[s, 1]) ={ |1,+><1,1| \
+,4/5|1,\[Rule]<1,2|},Q(Subscript[s, 1],Subscript[s, 5]) ={ \
+|(3/5)|1,2><1,2| , |2><2|\[CircleTimes]I },*)
+(*Q(Subscript[s, 1],Subscript[s, 0]) ={ |1,1><1,+| \
+,4/5|1,2><1,-|},Q(Subscript[s, 1],Subscript[s, 2])={3/5|1,2><1,-| , \
+|2><1|\[CircleTimes]I},*)
+(*Q(Subscript[s, 2],Subscript[s, 0])={12/25 X\[CircleTimes]I ,9/25 X \
+\[CircleTimes]X},Q(Subscript[s, 2],Subscript[s, 3])={16/25 I \
+\[CircleTimes]I ,12/25 I \[CircleTimes]X },*)
+(*Q(Subscript[s, 3],Subscript[s, 0])={12/25 I \[CircleTimes]Z ,12/25 \
+Z \[CircleTimes]I },Q(Subscript[s, 3],Subscript[s, 4])={16/25 I \
+\[CircleTimes]I ,9/25 Z\[CircleTimes]Z},*)
+(*Q(Subscript[s, 4],Subscript[s, 4])={I \
+\[CircleTimes]I},Q(Subscript[s, 5],Subscript[s, 5])={I\[CircleTimes]I \
+},*)
+(*their corresponding matrix representations are showed as follows*)
+Q011 := KroneckerProduct[{{1, 0}, {0, 0}}, {{1/Sqrt[2], 
+     0}, {1/Sqrt[2], 0}}];
+Q012 := KroneckerProduct[{{4/5, 0}, {0, 0}}, {{0, 
+     1/Sqrt[2]}, {0, -1/Sqrt[2]}}];
+Q051 := KroneckerProduct[{{3/5, 0}, {0, 0}}, {{0, 0}, {0, 1}}];
+Q052 := KroneckerProduct[{{0, 0}, {0, 1}}, id];
+Q101 := KroneckerProduct[{{1, 0}, {0, 0}}, {{1/Sqrt[2], 
+     1/Sqrt[2]}, {0, 0}}];
+Q102 := KroneckerProduct[{{4/5, 0}, {0, 0}}, {{0, 
+     0}, {1/Sqrt[2], -1/Sqrt[2]}}];
+Q121 := KroneckerProduct[{{3/5, 0}, {0, 0}}, {{0, 
+     0}, {1/Sqrt[2], -1/Sqrt[2]}}];
+Q122 := KroneckerProduct[{{0, 0}, {0, 1}}, id];
+Q201 := KroneckerProduct[12/25 X, id];
+Q202 := KroneckerProduct[9/25 X, X];
+Q231 := KroneckerProduct[16/25 id, id];
+Q232 := KroneckerProduct[12/25 id, X];
+Q301 := KroneckerProduct[12/25 id, Z];
+Q302 := KroneckerProduct[12/25 Z, id];
+Q341 := KroneckerProduct[16/25 id, id];
+Q342 := KroneckerProduct[9/25 Z, Z];
+
+(*After computing the direct-sum of all BSCC subspaces in this given \
+quantum system,we can get the matrix representation of projectors of \
+the subspace gamma denoted as Pgamma*)
+Pgamma := KroneckerProduct[Transpose[s0].s0, 
+    KroneckerProduct[{{1, 0}, {0, 0}}, {{1, 0}, {0, 0}}]] + 
+   KroneckerProduct[Transpose[s1].s1, 
+    KroneckerProduct[{{1, 0}, {0, 0}}, {{1/2, 1/2}, {1/2, 1/2}}]];
+(*After some subtle treatment,remove classical space*)
+PgammaBu1 := 
+  id4 - KroneckerProduct[{{1, 0}, {0, 0}}, {{1, 0}, {0, 0}}];
+PgammaBu2 := 
+  id4 - KroneckerProduct[{{1, 0}, {0, 0}}, {{1/2, 1/2}, {1/2, 1/2}}];
+
+(*apply the projector ofI-gamma to remove BSCC subspace,and then have \
+the matrix representation of super-operators extending on \
+classical-quantum system*)
+Q01 := KroneckerProduct[Transpose[s1].s0, 
+   KroneckerProduct[Q011.PgammaBu1, Q011.PgammaBu1] + 
+    KroneckerProduct[Q012.PgammaBu1, Q012.PgammaBu1]];
+Q05 := KroneckerProduct[Transpose[s5].s0, 
+   KroneckerProduct[Q051.PgammaBu1, Q051.PgammaBu1] + 
+    KroneckerProduct[Q052.PgammaBu1, Q052.PgammaBu1]];
+Q10 := KroneckerProduct[Transpose[s0].s1, 
+   KroneckerProduct[Q101.PgammaBu2, Q101.PgammaBu2] + 
+    KroneckerProduct[Q102.PgammaBu2, Q102.PgammaBu2]];
+Q12 := KroneckerProduct[Transpose[s2].s1, 
+   KroneckerProduct[Q121.PgammaBu2, Q121.PgammaBu2] + 
+    KroneckerProduct[Q122.PgammaBu2, Q122.PgammaBu2]];
+Q20 := KroneckerProduct[Transpose[s0].s2, 
+   KroneckerProduct[Q201, Q201] + KroneckerProduct[Q202, Q202]];
+Q23 := KroneckerProduct[Transpose[s3].s2, 
+   KroneckerProduct[Q231, Q231] + KroneckerProduct[Q232, Q232]];
+Q30 := KroneckerProduct[Transpose[s0].s3, 
+   KroneckerProduct[Q301, Q301] + KroneckerProduct[Q302, Q302]];
+Q34 := KroneckerProduct[Transpose[s4].s3, 
+   KroneckerProduct[Q341, Q341] + KroneckerProduct[Q342, Q342]];
+M2 := Q01 + Q05 + Q10 + Q12 + Q20 + Q23 + Q30 + Q34;
+COM2 := M2.M2;
+COM4 := COM2.COM2;
+COM8 := COM4.COM4;
+COM16 := COM8.COM8;
+INTERMEDIATE := id19 - COM16;
+INVERSE := Inverse[id96 - M2];
