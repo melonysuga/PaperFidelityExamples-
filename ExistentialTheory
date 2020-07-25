@@ -1,0 +1,103 @@
+a[1] := {{1, 0, 0, 0, 0, 0}};
+a[2] := {{0, 1, 0, 0, 0, 0}};
+a[3] := {{0, 0, 1, 0, 0, 0}};
+a[4] := {{0, 0, 0, 1, 0, 0}};
+a[5] := {{0, 0, 0, 0, 1, 0}};
+a[6] := {{0, 0, 0, 0, 0, 1}};
+ket[1] := {{1, 0, 0, 0}};
+ket[2] := {{0, 1, 0, 0}};
+ket[3] := {{0, 0, 1, 0}};
+ket[4] := {{0, 0, 0, 1}};
+r := {r1, r2, r3, r4};
+i := {i1, i2, i3, i4};
+M3ok = KroneckerProduct[Transpose[s5].s5, id16];
+(*fix the starting state s_3*)
+(*matrix representation of SOVM \phi_1=true U ok*)
+SUMS3UOk = 
+ Sum[KroneckerProduct[a[i], id16], {i, 1, 
+    6}].M3ok.INVERSE.KroneckerProduct[Transpose[a[4]], id16]
+(*matrix representation of SOVM \phi_2=true U^\[LessEqual]15 ok*)
+SUMS3U15Ok = 
+ Sum[KroneckerProduct[a[i], id16], {i, 1, 
+    6}].M3ok.INTERMEDIATE.INVERSE.KroneckerProduct[Transpose[a[4]], 
+   id16]
+
+M3OkOrError = 
+  KroneckerProduct[Transpose[s5].s5, id16] + 
+   KroneckerProduct[Transpose[s4].s4, id16];
+(*matrix representation of SOVM \phi_3=true U \
+(ok\/error)*)SUMS3UOkOrError = 
+ Sum[KroneckerProduct[a[i], id16], {i, 1, 
+    6}].M3OkOrError.INVERSE.KroneckerProduct[Transpose[a[4]], id16]
+(*matrix representation of SOVM \phi_3=true U^\[LessEqual]15 \
+(ok\/error)*)
+SUMS3U15OkOrError = 
+ Sum[KroneckerProduct[a[i], id16], {i, 1, 
+    6}].M3OkOrError.INTERMEDIATE.INVERSE.KroneckerProduct[
+   Transpose[a[4]], id16]
+
+(*calculation of fidelity-quantifier-formula*)
+(*path \phi_2=true U^\[LessEqual]15 ok*)
+FORMULAU15Ok = 
+  Sum[Sum[Sum[
+     Sum[((r[[m]]*r[[n]] + i[[m]]*i[[n]])*(r[[h]]*r[[o]] + 
+            i[[h]]*i[[o]]) + (r[[m]]*i[[n]] - 
+            r[[n]]*i[[m]])*(r[[h]]*i[[o]] - r[[o]]*i[[h]]))*
+       KroneckerProduct[ket[m], ket[n]].SUMS3U15Ok.KroneckerProduct[
+         Transpose[ket[h]], Transpose[ket[o]]], {h, 1, 4}], {o, 1, 
+      4}], {m, 1, 4}], {n, 1, 4}];
+FORMUU15Ok = (68487984933853712477433677856 (i2^2 + r2^2)^2)/
+   227373675443232059478759765625 + (
+   225621334629609241922855424 (i2^2 + r2^2) (i3^2 + r3^2))/
+   9094947017729282379150390625 + 288/625 (i3^2 + r3^2)^2 + (
+   401104594897083096751742976 (i2^2 + r2^2) (i4^2 + r4^2))/
+   9094947017729282379150390625 + 288/625 (i4^2 + r4^2)^2;
+Reduce[Exists[{r1, r2, r3, r4, i1, i2, i3, i4}, 
+  r.r + i.i == 1 && FORMUU15Ok <= 0], Reals]
+
+(*path \phi_3=true U^\[LessEqual]15 (ok\/error)*)
+FORMULAU15OkOrError = 
+  Sum[Sum[Sum[
+     Sum[((r[[m]]*r[[n]] + i[[m]]*i[[n]])*(r[[h]]*r[[o]] + 
+            i[[h]]*i[[o]]) + (r[[m]]*i[[n]] - 
+            r[[n]]*i[[m]])*(r[[h]]*i[[o]] - r[[o]]*i[[h]]))*
+       KroneckerProduct[ket[m], 
+         ket[n]].SUMS3U15OkOrError.KroneckerProduct[Transpose[ket[h]],
+          Transpose[ket[o]]], {h, 1, 4}], {o, 1, 4}], {m, 1, 4}], {n, 
+    1, 4}];
+Reduce[Exists[{r1, r2, r3, r4, i1, i2, i3, i4}, 
+  r.r + i.i == 
+    1 && (337 i1^4)/625 + (3318403704685565836307974101662 i1^2 i2^2)/
+     5684341886080801486968994140625 + (
+     5017502987841674535674567823313 i2^4)/
+     5684341886080801486968994140625 + (14 i1^2 i3^2)/25 + (
+     10033612198548867359598636674 i2^2 i3^2)/
+     9094947017729282379150390625 + i3^4 + (674 i1^2 i4^2)/625 + (
+     5494274924825481229075961726 i2^2 i4^2)/
+     9094947017729282379150390625 + (14 i3^2 i4^2)/25 + i4^4 + (
+     674 i1^2 r1^2)/625 + (3318403704685565836307974101662 i2^2 r1^2)/
+     5684341886080801486968994140625 + (14 i3^2 r1^2)/25 + (
+     674 i4^2 r1^2)/625 + (337 r1^4)/625 + (
+     3318403704685565836307974101662 i1^2 r2^2)/
+     5684341886080801486968994140625 + (
+     10035005975683349071349135646626 i2^2 r2^2)/
+     5684341886080801486968994140625 + (
+     10033612198548867359598636674 i3^2 r2^2)/
+     9094947017729282379150390625 + (
+     5494274924825481229075961726 i4^2 r2^2)/
+     9094947017729282379150390625 + (
+     3318403704685565836307974101662 r1^2 r2^2)/
+     5684341886080801486968994140625 + (
+     5017502987841674535674567823313 r2^4)/
+     5684341886080801486968994140625 + (14 i1^2 r3^2)/25 + (
+     10033612198548867359598636674 i2^2 r3^2)/
+     9094947017729282379150390625 + 2 i3^2 r3^2 + (14 i4^2 r3^2)/
+     25 + (14 r1^2 r3^2)/25 + (
+     10033612198548867359598636674 r2^2 r3^2)/
+     9094947017729282379150390625 + r3^4 + (674 i1^2 r4^2)/625 + (
+     5494274924825481229075961726 i2^2 r4^2)/
+     9094947017729282379150390625 + (14 i3^2 r4^2)/25 + 
+     2 i4^2 r4^2 + (674 r1^2 r4^2)/625 + (
+     5494274924825481229075961726 r2^2 r4^2)/
+     9094947017729282379150390625 + (14 r3^2 r4^2)/25 + r4^4 <= 
+    4491200064414/10000000000000], Reals]
