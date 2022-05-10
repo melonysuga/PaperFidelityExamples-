@@ -1,0 +1,342 @@
+(* Structure of QMC *)
+QMC=Association[{Num->0,Classical->List[],Quantum->List[]}];
+(* Initialize QMC *)
+QMCinitialize[Num0_,Classical0_,Quantum0_]:=
+Module[{Num1=Num0,Classical1=Classical0,Quantum1=Quantum0},
+QMC[Num]=Num1;
+QMC[Classical]=Classical1;
+QMC[Quantum]=Quantum1;
+]
+(* Some Immediate Functions*)
+isZero[M_]:=Module[{M1=M,Flag},
+Flag=True;
+Do[
+Do[If[j!=0,Flag=False;Break,Continue],{j,i}]
+,{i,M1}
+];
+Flag
+]
+Var2String[var_]:=SymbolName[var];
+GetVariables:=Function[{i,j},ToExpression["x"<>ToString[#]]&/@Range[i,j]];
+(* Get index i of variable xi *)
+GetIndex[sym_]:=Module[{sym1=sym,str,idx},
+str=Var2String[sym1];
+idx=FromDigits[StringTake[str,{2,StringLength[str]}]]
+]
+States2Bra[QMC0_,SS0_]:=Module[{QMC1=QMC0,SS1=SS0,Idx,num,VectorS},Idx=Position[QMC1[Classical],SS1][[1]][[1]];
+num=QMC1[Num];
+VectorS=List[];
+Do[If[i==Idx,AppendTo[VectorS,1],AppendTo[VectorS,0]],{i,num}];
+{VectorS}
+];
+Num2Bra[QMC0_,Idx0_]:=Module[{QMC1=QMC0,Idx1=Idx0,num,VectorS},
+num=QMC1[Num];
+VectorS=List[];
+Do[If[i==Idx1,AppendTo[VectorS,1],AppendTo[VectorS,0]],{i,num}];
+{VectorS}
+];
+ProjKraus[QMC0_,T0_]:=Module[{QMC1=QMC0,T1=T0,Proj,Ind,BraS,class},
+Proj=List[];
+Ind=IdentityMatrix[HilbertD];
+Do[
+BraS=States2Bra[QMC1,i];
+class=Transpose[BraS].BraS;
+AppendTo[Proj,{class,Ind}];
+,{i,T1}
+];
+Proj
+];
+ZeroMatrix[D0_]:=Module[{D1=D0,Id},
+Id=IdentityMatrix[D1];
+Do[Id[[i]][[i]]=0;,{i,D1}];
+Id
+]
+(* Get the super operator of QMC *)
+Get2Super[QMC0_]:=Module[{QMC1=QMC0,F,Q1,len,llen,si,sj,Q,class},
+F=List[];
+Q1=QMC1[Quantum];
+len=Length[Q1];
+Do[si=Q1[[i]][[1]];
+sj=Q1[[i]][[2]];
+llen=Length[Q1[[i]][[3]]];
+Do[
+Q=Q1[[i]][[3]][[j]];
+class=Transpose[States2Bra[QMC1,sj]].States2Bra[QMC1,si];
+AppendTo[F,{class,Q}];
+,{j,llen}];
+,{i,len}
+];
+F
+]
+SuperComposite[SuperA_,SuperB_]:=Module[{Super1=SuperA,Super2=SuperB,Super3,class,Q},
+Super3=List[];
+Do[
+Do[
+class=i[[1]].j[[1]];
+If[isZero[class],Continue;,Q=i[[2]].j[[2]];
+If[isZero[Q],Continue;,AppendTo[Super3,{class,Q}]]];
+,{i,Super1}
+];
+,{j,Super2}
+];
+Super3
+]
+SuperOperator[QMC0_,Superp_,EE_]:=Module[{QMC1=QMC0,Super1=Superp,E1=EE,class,Q,num,Result,Rerange,zeromatrix,len1,len2},
+class=0;
+Q=0;
+num=QMC1[Num];
+Result=List[];
+Rerange=List[];
+zeromatrix=ZeroMatrix[HilbertD];
+Do[
+class=Transpose[Num2Bra[QMC1,i]].Num2Bra[QMC1,i];
+AppendTo[Rerange,{class,zeromatrix}]
+,{i,num}
+];
+Do[
+Do[
+class=q[[1]].e[[1]].Transpose[q[[1]]];
+Q=q[[2]].e[[2]].ConjugateTranspose[q[[2]]];
+If[isZero[class],Continue,AppendTo[Result,{class,Q}]]
+,{q,Super1}
+]
+,{e,E1}
+];
+len1=Length[Result];
+len2=Length[Rerange];
+Do[
+Do[
+If[Result[[i]][[1]]==Rerange[[j]][[1]],Rerange[[j]][[2]]+=Result[[i]][[2]],Continue];
+,{j,len2}
+];
+,{i,len1}
+];
+Rerange
+]
+Supp[M_]:=Module[{M1=M,eigenvectors,eigenvalues,SupportVectors},
+eigenvectors=Eigenvectors[M1];
+eigenvalues=Eigenvalues[M1];
+SupportVectors=Pick[eigenvectors,Map[#!=0&,eigenvalues]]
+]
+ComputeBSCC[QMC0_,Super_]:=Module[{QMC1=QMC0,Super1=Super,SuperX,num,DiagVars,DiagAssign,AssignList,VarList,FreeList,Freeres,ResultList,A,class,T,idx,Y,Expr,Res,i,j,k,kmod,Unrelevent,values,val1,len3,SolVector,DensityList,StateList,SuppList,val2,SuperT,Q,SuppQ},
+SuperX=List[];
+num=QMC1[Num];
+(*All the diagonal variables*)
+DiagVars=List[];
+(*Diagonal Variables have been assigned*)
+DiagAssign=List[];
+AssignList=List[];
+VarList=List[];
+(*FreeVariables*)
+FreeList=List[];
+(*FreeVariables in solving result*)
+Freeres=List[];
+(*Result List*)
+ResultList=List[];
+A=GetVariables[1,num*HilbertD^2];
+Do[
+class=Transpose[Num2Bra[QMC1,i]].Num2Bra[QMC1,i];
+T=IdentityMatrix[HilbertD];
+Do[
+Do[
+idx=(i-1)*HilbertD^2+(j-1)*HilbertD+k;
+AppendTo[VarList,A[[idx]]];
+If[j==k,T[[j]][[k]]=A[[idx]];
+AppendTo[DiagVars,A[[idx]]],T[[j]][[k]]=A[[idx]]+I A[[(i-1)*HilbertD^2+(k-1)*HilbertD+j]];
+T[[k]][[j]]=A[[idx]]-I A[[(i-1)*HilbertD^2+(k-1)*HilbertD+j]];
+AppendTo[VarList,A[[(i-1)*HilbertD^2+(k-1)*HilbertD+j]]]];
+,{k,j}
+];
+,{j,HilbertD}
+];
+AppendTo[SuperX,{class,T}];,{i,num}
+];
+Y=SuperOperator[QMC1,Super1,SuperX];
+Expr=List[];
+Do[
+Do[
+If[Yi[[1]]==SuperXi[[1]],AppendTo[Expr,Yi[[2]]==SuperXi[[2]]],Continue]
+,{Yi,Y}
+];
+,{SuperXi,SuperX}
+];
+(*AppendTo[Expr,trace\[Equal]1];*)
+Res=Solve[Expr];
+SuperX=SuperX/.Res;
+(*Extract all the diagonal free variables*)
+Do[
+AppendTo[AssignList,item[[1]]];
+idx=GetIndex[item[[1]]];
+i=Ceiling[idx/HilbertD^2];
+j=Ceiling[(idx-(i-1)*HilbertD^2)/HilbertD];
+kmod=Mod[(idx-(i-1)*HilbertD^2),HilbertD];
+If[kmod==0,k=HilbertD,k=kmod];
+If[j==k,AppendTo[DiagAssign,item[[1]]],Continue];
+,{item,Res[[1]]}
+];
+(*Find free variables:diagonal list-result diagonal list*)
+FreeList=Complement[DiagVars,Intersection[DiagVars,DiagAssign]];
+(*Find variables that are neither appearing in the result nor free variables*)
+Unrelevent=Complement[VarList,Union[AssignList,FreeList]];
+(*Assign unrelevent variables to 0*)
+values={0};
+val1=Thread[Unrelevent->#]&/@values;
+len3=Length[FreeList];
+SolVector=List[];
+Do[AppendTo[SolVector,0];,{i,len3}];
+SolVector={SolVector};
+DensityList=List[];
+Do[
+T=ZeroMatrix[HilbertD];
+AppendTo[DensityList,T];
+,{i,num}
+];
+StateList=List[];
+Do[
+class=Transpose[Num2Bra[QMC1,i]].Num2Bra[QMC1,i];
+AppendTo[StateList,Rule[class,{}]];
+,{i,num}
+];
+SuppList=Association[StateList];
+Do[
+val2=List[];
+SolVector[[1]][[i]]=1;
+val2=Thread[FreeList->#]&/@SolVector;
+val2={Union[val1[[1]],val2[[1]]]};
+SuperT=SuperX/.val2;
+SuperT=SuperT[[1]][[1]];
+Do[class=item[[1]];
+Q=item[[2]];
+SuppQ=Supp[Q];
+SuppList[class]=Union[SuppList[class],SuppQ];,{item,SuperT}];
+SolVector[[1]][[i]]=0;
+,{i,len3}
+];
+SuppList=Normal[SuppList]
+]
+ComplementSpace[BSCC0_]:=Module[{BSCC1=BSCC0,SuperComplete,Q},
+SuperComplete=List[];
+Do[
+If[item[[2]]=={},Q=IdentityMatrix[HilbertD],Q=Orthogonalize[NullSpace[item[[2]]]]];
+If[Q=={},Q=ZeroMatrix[HilbertD],Q=Sum[ConjugateTranspose[{vi}].{vi},{vi,Q}]];
+AppendTo[SuperComplete,{item[[1]],Q}]
+,{item,BSCC1}
+];
+SuperComplete
+]
+S2M[Super_]:=Module[{Super1=Super,Matrix,Q},
+Matrix=0;
+Do[
+Q=KroneckerProduct[item[[2]],Conjugate[item[[2]]]];
+Matrix+=KroneckerProduct[item[[1]],Q];
+,{item,Super1}
+];
+Matrix
+]
+(* Synthesizing the SOVM of Atomic Unbounded-time until path formulae*)
+UBuntilSOVM[QMC0_,Phi10_,Phi20_,Initial0_]:=Module[{QMC1=QMC0,Phi1 = Phi10,Phi2 = Phi20,Initial1=Initial0,states,statesN,Id1,Id2,Sinit,F,Phi1AndNotPhi2,ProjPhi1AndNotPhi2,FPhi1AndNotPhi2,BSCC,PNotGamma,M2,M3,Delta},
+states=QMC1[Classical];
+statesN=QMC1[Num];
+Id1=IdentityMatrix[HilbertD*HilbertD];
+Id2=IdentityMatrix[statesN*HilbertD*HilbertD];
+Sinit=Transpose[States2Bra[QMC1,Initial1]];
+If[
+Length[Phi1 ]==0||Length[Phi2]==0,
+Delta=ZeroMatrix[HilbertD*HilbertD];,
+F=Get2Super[QMC1];
+Phi1AndNotPhi2 = Intersection[Phi1, Complement[states, Phi2]];
+ProjPhi1AndNotPhi2 = ProjKraus[QMC1, Phi1AndNotPhi2];
+FPhi1AndNotPhi2 = SuperComposite[F,ProjPhi1AndNotPhi2];
+BSCC=ComputeBSCC[QMC1,FPhi1AndNotPhi2];
+PNotGamma=ComplementSpace[BSCC];
+M2=S2M[SuperComposite[FPhi1AndNotPhi2,PNotGamma]];
+M3=0;
+Do[
+M3+=KroneckerProduct[Transpose[States2Bra[QMC1,si]].States2Bra[QMC1,si],Id1];
+,{si,Phi2}
+];
+If[Det[Id2-M2]!=0,
+Delta=Sum[KroneckerProduct[States2Bra[QMC1,si],Id1].M3.Inverse[Id2-M2].KroneckerProduct[Sinit,Id1],{si,states}];
+,Print["Error"];
+];
+];
+Delta
+]
+(* Synthesizing the SOVM of Atomic Bounded-time path formulae*)
+BuntilSOVM[QMC0_,Phi10_,Phi20_,k0_,Initial0_]:=Module[{QMC1=QMC0,Phi1 = Phi10,Phi2 = Phi20,k1= k0,Initial1=Initial0,states,statesN,Id1,Id2,Sinit,MatrixPowerTime,F,Phi1AndNotPhi2,ProjPhi1AndNotPhi2,FPhi1AndNotPhi2,BSCC,PNotGamma,M2,M2Power,M3,cnt,Delta},
+states=QMC1[Classical];
+statesN=QMC1[Num];
+Id1=IdentityMatrix[HilbertD*HilbertD];
+Id2=IdentityMatrix[statesN*HilbertD*HilbertD];
+Sinit=Transpose[States2Bra[QMC1,Initial1]];
+MatrixPowerTime = IntegerPart[Log2[k1+1]];
+F=Get2Super[QMC1];
+If[
+Length[Phi1 ]==0||Length[Phi2]==0,
+Delta=ZeroMatrix[HilbertD*HilbertD];,
+Phi1AndNotPhi2 = Intersection[Phi1, Complement[states, Phi2]];
+ProjPhi1AndNotPhi2 = ProjKraus[QMC1, Phi1AndNotPhi2];
+FPhi1AndNotPhi2 = SuperComposite[F,ProjPhi1AndNotPhi2];
+BSCC=ComputeBSCC[QMC1,FPhi1AndNotPhi2];
+PNotGamma=ComplementSpace[BSCC];
+M2=S2M[SuperComposite[FPhi1AndNotPhi2,PNotGamma]];
+M3=0;
+Do[
+M3+=KroneckerProduct[Transpose[States2Bra[QMC1,si]].States2Bra[QMC1,si],Id1];
+,{si,Phi2}
+];
+M2Power = M2;
+cnt = 1;
+While[
+cnt <= MatrixPowerTime,
+M2Power = M2Power.M2Power;
+cnt ++;
+];
+cnt = 2^MatrixPowerTime;
+While[
+cnt <= k1,
+M2Power = M2Power.M2;
+cnt ++;
+];
+If[Det[Id2-M2]!=0,
+Delta=Sum[KroneckerProduct[States2Bra[QMC1,si],Id1].M3.(Id2-M2Power).Inverse[Id2-M2].KroneckerProduct[Sinit,Id1],{si,states}];
+,Print["Error"];
+];
+];
+Delta
+];
+(* Calculate the Polynomial Associated to the Fidelity-quantifier Formulae*)
+FORMULA[QMC0_,Matrix0_]:=Module[{QMC1=QMC0,Matrix1=Matrix0,h,o,m,n,FORMU},
+FORMU=Sum[Sum[Sum[Sum[((r[[m]]*r[[n]]+i[[m]]*i[[n]])*(r[[h]]*r[[o]]+i[[h]]*i[[o]])+(r[[m]]*i[[n]]-r[[n]]*i[[m]])*(r[[h]]*i[[o]]-r[[o]]*i[[h]]))*KroneckerProduct[ket[m],ket[n]].Matrix1.KroneckerProduct[Transpose[ket[h]],Transpose[ket[o]]],{h,1,HilbertD}],{o,1,HilbertD}],{m,1,HilbertD}],{n,1,HilbertD}];
+FORMU
+];
+(* Synthesizing the SOVM of ATOMIC next path formulas *)
+IsInSet[Set0_,Item0_]:=Module[
+{Set1= Set0,Item1=Item0,FLAG},
+FLAG =False;
+Do[
+If[Item1==item,FLAG=True;Break]
+,{item, Set1}
+];
+FLAG
+]
+NextSOVM[QMC0_,Phi0_,Initial0_]:=Module[{QMC1=QMC0,Phi=Phi0,Initial1=Initial0,states,stateN,quantumStates,Delta},
+states = QMC1[Classical];
+stateN = QMC1[Num];
+quantumStates = QMC1[Quantum];
+Delta = ZeroMatrix[HilbertD*HilbertD];
+Do[
+If[
+item[[1]]== Initial1 && IsInSet[Phi,item[[2]]] == True,
+Delta = Delta + KroneckerProduct[item[[3]],Conjugate[item[[3]]]]
+]
+,{item, quantumStates}
+];
+Delta
+];
+(* Decide the Fidelity-quantifier Formulae with Threshold \tau*)
+DecideFidQuantifierFormu[QMC0_,Matrix0_,Value0_]:=Module[{QMC1=QMC0,Matrix1=Matrix0,Value1=Value0,Result,Formula1},
+Formula1=FORMULA[QMC1,Matrix1][[1]][[1]];
+Result=Reduce[Exists[{r1,r2,r3,r4,i1,i2,i3,i4},r.r+i.i==1&&Formula1<=Value1],Reals];
+Result
+]
